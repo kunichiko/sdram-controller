@@ -27,6 +27,8 @@ module sdram_controller (
     wr_addr,
     wr_data,
     wr_enable,
+    wr_mask_low,
+    wr_mask_high,
 
     rd_addr,
     rd_data,
@@ -104,6 +106,9 @@ localparam CMD_PALL = 8'b10010001,
 input  [HADDR_WIDTH-1:0]   wr_addr;
 input  [15:0]              wr_data;
 input                      wr_enable;
+input                      wr_mask_low,
+input                      wr_mask_high,
+
 
 input  [HADDR_WIDTH-1:0]   rd_addr;
 output [15:0]              rd_data;
@@ -226,7 +231,7 @@ always @ (posedge clk)
 always @*
 begin
     if (state[4])
-      {data_mask_low_r, data_mask_high_r} = 2'b00;
+      {data_mask_low_r, data_mask_high_r} = {wr_mask_low, wr_mask_high};
     else
       {data_mask_low_r, data_mask_high_r} = 2'b11;
 
