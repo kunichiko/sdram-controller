@@ -38,7 +38,7 @@ module sdram_controller (
     busy, rst_n, clk,
 
     /* SDRAM SIDE */
-    addr, bank_addr, data, clock_enable, cs_n, ras_n, cas_n, we_n,
+    addr, bank_addr, idata, odata, odata_en, clock_enable, cs_n, ras_n, cas_n, we_n,
     data_mask_low, data_mask_high
 );
 
@@ -50,7 +50,7 @@ parameter BANK_WIDTH = 2;
 parameter SDRADDR_WIDTH = ROW_WIDTH > COL_WIDTH ? ROW_WIDTH : COL_WIDTH;
 parameter HADDR_WIDTH = BANK_WIDTH + ROW_WIDTH + COL_WIDTH;
 
-parameter CLK_FREQUENCY = 133;  // Mhz
+parameter CLK_FREQUENCY = 100;  // Mhz
 parameter REFRESH_TIME =  32;   // ms     (how often we need to refresh)
 parameter REFRESH_COUNT = 8192; // cycles (how many refreshes required per refresh time)
 
@@ -106,8 +106,8 @@ localparam CMD_PALL = 8'b10010001,
 input  [HADDR_WIDTH-1:0]   wr_addr;
 input  [15:0]              wr_data;
 input                      wr_enable;
-input                      wr_mask_low,
-input                      wr_mask_high,
+input                      wr_mask_low;
+input                      wr_mask_high;
 
 
 input  [HADDR_WIDTH-1:0]   rd_addr;
@@ -122,7 +122,9 @@ input                      clk;
 /* SDRAM SIDE */
 output [SDRADDR_WIDTH-1:0] addr;
 output [BANK_WIDTH-1:0]    bank_addr;
-inout  [15:0]              data;
+input  [15:0]              idata;
+output  [15:0]             odata;
+output                     odata_en;
 output                     clock_enable;
 output                     cs_n;
 output                     ras_n;
@@ -168,7 +170,8 @@ assign {clock_enable, cs_n, ras_n, cas_n, we_n} = command[7:3];
 assign bank_addr      = (state[4]) ? bank_addr_r : command[2:1];
 assign addr           = (state[4] | state == INIT_LOAD) ? addr_r : { {SDRADDR_WIDTH-11{1'b0}}, command[0], 10'd0 };
 
-assign data = (state == WRIT_CAS) ? wr_data_r : 16'bz;
+assign odata_en = (state == WRIT_CAS) ? 1'b1 : 1'b0;
+assign odata = wr_data_r;
 assign rd_ready = rd_ready_r;
 
 // HOST INTERFACE
@@ -201,7 +204,7 @@ always @ (posedge clk)
 
     if (state == READ_READ)
       begin
-      rd_data_r <= data;
+      rd_data_r <= idata;
       rd_ready_r <= 1'b1;
       end
     else
@@ -232,6 +235,7 @@ always @*
 begin
     if (state[4])
       {data_mask_low_r, data_mask_high_r} = {wr_mask_low, wr_mask_high};
+//      {data_mask_low_r, data_mask_high_r} = 2'b00;
     else
       {data_mask_low_r, data_mask_high_r} = 2'b11;
 
