@@ -35,6 +35,8 @@ module sdram_controller (
     rd_ready,
     rd_enable,
 
+    ref_lock, // prevent refresh cycle
+
     busy, rst_n, clk,
 
     /* SDRAM SIDE */
@@ -114,6 +116,8 @@ input  [HADDR_WIDTH-1:0]   rd_addr;
 output [15:0]              rd_data;
 input                      rd_enable;
 output                     rd_ready;
+
+input                      ref_lock;
 
 output                     busy;
 input                      rst_n;
@@ -288,7 +292,7 @@ begin
    command_nxt = CMD_NOP;
    if (state == IDLE)
         // Monitor for refresh or hold
-        if (refresh_cnt >= CYCLES_BETWEEN_REFRESH)
+        if ((refresh_cnt >= CYCLES_BETWEEN_REFRESH) && (ref_lock == 1'b0) )
           begin
           next = REF_PRE;
           command_nxt = CMD_PALL;
