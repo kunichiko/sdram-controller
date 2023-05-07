@@ -35,7 +35,8 @@ module sdram_controller (
     rd_ready,
     rd_enable,
 
-    ref_lock, // prevent refresh cycle
+    ref_lock_req, // prevent refresh cycle
+    ref_lock_ack,
 
     busy, rst_n, clk,
 
@@ -117,7 +118,8 @@ output [15:0]              rd_data;
 input                      rd_enable;
 output                     rd_ready;
 
-input                      ref_lock;
+input                      ref_lock_req;
+output                     ref_lock_ack;
 
 output                     busy;
 input                      rst_n;
@@ -148,6 +150,8 @@ reg                      data_mask_high_r;
 reg [SDRADDR_WIDTH-1:0]  addr_r;
 reg [BANK_WIDTH-1:0]     bank_addr_r;
 reg                      rd_ready_r;
+
+reg                      ref_lock_ack;
 
 wire [15:0]              data_output;
 wire                     data_mask_low, data_mask_high;
@@ -183,6 +187,7 @@ assign rd_ready = rd_ready_r;
 always @ (posedge clk)
   if (~rst_n)
     begin
+    ref_lock_ack <= 1'b0;
     state <= INIT_NOP1;
     command <= CMD_NOP;
     state_cnt <= 4'hf;
@@ -194,6 +199,9 @@ always @ (posedge clk)
     end
   else
     begin
+
+    if (state == IDLE)
+      ref_lock_ack <= ref_lock_req;
 
     state <= next;
     command <= command_nxt;
@@ -291,8 +299,10 @@ begin
    state_cnt_nxt = 4'd0;
    command_nxt = CMD_NOP;
    if (state == IDLE)
+      begin
+
         // Monitor for refresh or hold
-        if ((refresh_cnt >= CYCLES_BETWEEN_REFRESH) && (ref_lock == 1'b0) )
+        if ((refresh_cnt >= CYCLES_BETWEEN_REFRESH) && (ref_lock_req == 1'b0))
           begin
           next = REF_PRE;
           command_nxt = CMD_PALL;
@@ -312,6 +322,7 @@ begin
           // HOLD
           next = IDLE;
           end
+      end
     else
       if (!state_cnt)
         case (state)
