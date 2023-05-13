@@ -214,9 +214,9 @@ always @ (posedge clk)
     if (wr_enable)
       wr_data_r <= wr_data;
 
+    rd_data_r <= idata;
     if (state == READ_READ)
       begin
-      rd_data_r <= idata;
       rd_ready_r <= 1'b1;
       end
     else
@@ -224,10 +224,10 @@ always @ (posedge clk)
 
     busy <= state[4];
 
-    if (rd_enable)
-      haddr_r <= rd_addr;
-    else if (wr_enable)
-      haddr_r <= wr_addr;
+//    if (rd_enable)
+//      haddr_r <= rd_addr;
+//    else if (wr_enable)
+//      haddr_r <= wr_addr;
 
     end
 
@@ -256,14 +256,14 @@ begin
 
    if (state == READ_ACT | state == WRIT_ACT)
      begin
-     bank_addr_r = haddr_r[HADDR_WIDTH-1:HADDR_WIDTH-(BANK_WIDTH)];
-     addr_r = haddr_r[HADDR_WIDTH-(BANK_WIDTH+1):HADDR_WIDTH-(BANK_WIDTH+ROW_WIDTH)];
+     bank_addr_r = rd_addr[HADDR_WIDTH-1:HADDR_WIDTH-(BANK_WIDTH)];
+     addr_r = rd_addr[HADDR_WIDTH-(BANK_WIDTH+1):HADDR_WIDTH-(BANK_WIDTH+ROW_WIDTH)];
      end
    else if (state == READ_CAS | state == WRIT_CAS)
      begin
      // Send Column Address
      // Set bank to bank to precharge
-     bank_addr_r = haddr_r[HADDR_WIDTH-1:HADDR_WIDTH-(BANK_WIDTH)];
+     bank_addr_r = rd_addr[HADDR_WIDTH-1:HADDR_WIDTH-(BANK_WIDTH)];
 
      // Examples for math
      //               BANK  ROW    COL
@@ -279,7 +279,7 @@ begin
                {SDRADDR_WIDTH-(11){1'b0}},
                1'b1,                       /* A10 */
                {10-COL_WIDTH{1'b0}},
-               haddr_r[COL_WIDTH-1:0]
+               rd_addr[COL_WIDTH-1:0]
               };
      end
    else if (state == INIT_LOAD)
