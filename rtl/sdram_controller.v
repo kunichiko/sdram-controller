@@ -24,13 +24,13 @@
 
 module sdram_controller (
     /* HOST INTERFACE */
-    wr_addr,
+    host_addr,
+
     wr_data,
     wr_enable,
     wr_mask_low,
     wr_mask_high,
 
-    rd_addr,
     rd_data,
     rd_ready,
     rd_enable,
@@ -106,14 +106,14 @@ localparam CMD_PALL = 8'b10010001,
 
 /* Interface Definition */
 /* HOST INTERFACE */
-input  [HADDR_WIDTH-1:0]   wr_addr;
+input  [HADDR_WIDTH-1:0]   host_addr;
+
 input  [15:0]              wr_data;
 input                      wr_enable;
 input                      wr_mask_low;
 input                      wr_mask_high;
 
 
-input  [HADDR_WIDTH-1:0]   rd_addr;
 output [15:0]              rd_data;
 input                      rd_enable;
 output                     rd_ready;
@@ -141,7 +141,6 @@ output                     data_mask_high;
 
 /* I/O Registers */
 
-reg  [HADDR_WIDTH-1:0]   haddr_r;
 reg  [15:0]              wr_data_r;
 reg  [15:0]              rd_data_r;
 reg                      busy;
@@ -192,7 +191,6 @@ always @ (posedge clk)
     command <= CMD_NOP;
     state_cnt <= 4'hf;
 
-    haddr_r <= {HADDR_WIDTH{1'b0}};
     wr_data_r <= 16'b0;
     rd_data_r <= 16'b0;
     busy <= 1'b0;
@@ -224,11 +222,6 @@ always @ (posedge clk)
 
     busy <= state[4];
 
-//    if (rd_enable)
-//      haddr_r <= rd_addr;
-//    else if (wr_enable)
-//      haddr_r <= wr_addr;
-
     end
 
 // Handle refresh counter
@@ -256,14 +249,14 @@ begin
 
    if (state == READ_ACT | state == WRIT_ACT)
      begin
-     bank_addr_r = rd_addr[HADDR_WIDTH-1:HADDR_WIDTH-(BANK_WIDTH)];
-     addr_r = rd_addr[HADDR_WIDTH-(BANK_WIDTH+1):HADDR_WIDTH-(BANK_WIDTH+ROW_WIDTH)];
+     bank_addr_r = host_addr[HADDR_WIDTH-1:HADDR_WIDTH-(BANK_WIDTH)];
+     addr_r = host_addr[HADDR_WIDTH-(BANK_WIDTH+1):HADDR_WIDTH-(BANK_WIDTH+ROW_WIDTH)];
      end
    else if (state == READ_CAS | state == WRIT_CAS)
      begin
      // Send Column Address
      // Set bank to bank to precharge
-     bank_addr_r = rd_addr[HADDR_WIDTH-1:HADDR_WIDTH-(BANK_WIDTH)];
+     bank_addr_r = host_addr[HADDR_WIDTH-1:HADDR_WIDTH-(BANK_WIDTH)];
 
      // Examples for math
      //               BANK  ROW    COL
@@ -279,7 +272,7 @@ begin
                {SDRADDR_WIDTH-(11){1'b0}},
                1'b1,                       /* A10 */
                {10-COL_WIDTH{1'b0}},
-               rd_addr[COL_WIDTH-1:0]
+               host_addr[COL_WIDTH-1:0]
               };
      end
    else if (state == INIT_LOAD)
